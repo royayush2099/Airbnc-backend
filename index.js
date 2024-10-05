@@ -9,8 +9,9 @@ const app = express();
 //so we use gensaltsync because it is asunc function and it is giving error at first when used gensalt instead of current one 
 const bcryptSalt= bcrypt.genSaltSync(10)// this is the second parameter in hashsync function
 const jwtSecret = '333$35$20999ayushroy2003'
+const cookieParser = require('cookie-parser');
 
-
+app.use(cookieParser());
 app.use(express.json());// it is used to parse the json res object as we need to destrucuture the req body from frontend
 app.use(cors({
     credentials:true,
@@ -42,9 +43,12 @@ app.post('/login',async (req,res)=>{
    if(userDoc){//this userDoc is user object 
     const passOk = bcrypt.compareSync(password, userDoc.password);//comapring with hashed password
     if(passOk){//checking if password is ok
-    jwt.sign({email:userDoc.email, id:userDoc._id},jwtSecret,{},(err,token)=>{
+    jwt.sign({email:userDoc.email,
+         id:userDoc._id,
+         name:userDoc.name}
+         ,jwtSecret,{},(err,token)=>{
         if(err) throw err;
-        res.cookie('token',token).json('pass ok') // we are sending a cookie and creating json web token here
+        res.cookie('token',token).json(userDoc) // we are sending a cookie and creating json web token here
     })//jwt creation 
        
     } else{
@@ -53,6 +57,21 @@ app.post('/login',async (req,res)=>{
    }else{
     res.json('not found');
    }
+})
+
+//api to /profile for fetching user information in usercontext at login time
+app.get('/profile',(req,res)=>{
+    const {token}  = req.cookies;
+    if(token){
+jwt.verify(token, jwtSecret, {}, (err,user)=>{
+if(err) throw err;
+res.json(user);
+})
+    }
+    else{
+        res.json(null)
+    }
+    res.json({token});
 })
 
 app.listen(Port)
