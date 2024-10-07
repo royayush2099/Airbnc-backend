@@ -75,4 +75,11 @@ res.json({name,email,_id});
  
 })
 
+
+//api to handle logout 
+
+app.post('/logout',(req,res)=>{
+    res.cookie('token','').json(true);
+})
+
 app.listen(Port)
