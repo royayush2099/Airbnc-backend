@@ -4,6 +4,9 @@ const mongoose= require('mongoose')
 const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken')
 const User = require('./models/User.js')
+const imageDownloader = require('image-downloader')//used to download on local system when it is provided with link 
+const multer = require('multer');//used to upload data from device 
+const fs = require('fs')
 require('dotenv').config()
 const app = express();
 //so we use gensaltsync because it is asunc function and it is giving error at first when used gensalt instead of current one 
@@ -13,6 +16,7 @@ const cookieParser = require('cookie-parser');
 
 app.use(cookieParser());
 app.use(express.json());// it is used to parse the json res object as we need to destrucuture the req body from frontend
+app.use('/uploads',express.static(__dirname+'/uploads'))
 app.use(cors({
     credentials:true,
     origin: 'http://localhost:5173',
@@ -80,6 +84,33 @@ res.json({name,email,_id});
 
 app.post('/logout',(req,res)=>{
     res.cookie('token','').json(true);
+})
+
+app.post('/upload-by-link',async (req,res)=>{
+const {link} = req.body;
+const newName ='photo'+ Date.now() + '.jpg'; //giving new names to upladed image
+await imageDownloader.image({
+    url:link,
+    dest: __dirname+'/uploads/'+newName,
+});
+res.json(newName)
+
+})
+const photosMidlleware = multer({dest:'uploads/'})//middleware for image upload
+
+//api endpoint to add photos from device
+app.post('/upload', photosMidlleware.array('photos',100),(req,res)=>{//name is photos because we are sending name photos from client side
+const uploadedFiles = [];
+    for(let i=0; i<req.files.length;i++){
+    const {path,originalname} = req.files[i];//getting the path and originalname of file uploaded by device from req object 
+  const parts =  originalname.split('.');//we are splitting originalname here with using dot as separator so to get the extension
+  const ext = parts[parts.length - 1] ;
+  const newPath = path + '.' + ext;
+    fs.renameSync(path,newPath)//we are renaming use fs module on server side files
+    uploadedFiles.push(newPath.replace(__dirname + '/uploads/', ''));
+
+}
+    res.json(uploadedFiles);
 })
 
 app.listen(Port)
